@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MapLibre GL Snow Example</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="controls">
+      <h3>❄️ Snow Controls</h3>
+      <label
+        >Density <span id="density-val">0.5</span>
+        <input
+          type="range"
+          id="density"
+          min="0"
+          max="100"
+          value="50"
+          step="1"
+        />
+      </label>
+      <label
+        >Intensity <span id="intensity-val">0.5</span>
+        <input
+          type="range"
+          id="intensity"
+          min="0"
+          max="100"
+          value="50"
+          step="1"
+        />
+      </label>
+      <label
+        >Flake Size <span id="flakesize-val">4</span>
+        <input
+          type="range"
+          id="flakesize"
+          min="1"
+          max="20"
+          value="4"
+          step="0.5"
+        />
+      </label>
+      <label
+        >Opacity <span id="opacity-val">0.8</span>
+        <input
+          type="range"
+          id="opacity"
+          min="0"
+          max="100"
+          value="80"
+          step="1"
+        />
+      </label>
+      <label
+        >Wind H <span id="windh-val">0</span>
+        <input
+          type="range"
+          id="windh"
+          min="-100"
+          max="100"
+          value="0"
+          step="1"
+        />
+      </label>
+      <label
+        >Wind V <span id="windv-val">50</span>
+        <input
+          type="range"
+          id="windv"
+          min="0"
+          max="200"
+          value="50"
+          step="1"
+        />
+      </label>
+      <h4>Fog</h4>
+      <label
+        ><input type="checkbox" id="fog-toggle" checked /> Enable Fog</label
+      >
+      <label
+        >Fog Opacity <span id="fogopacity-val">0.08</span>
+        <input
+          type="range"
+          id="fogopacity"
+          min="0"
+          max="50"
+          value="8"
+          step="1"
+        />
+      </label>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

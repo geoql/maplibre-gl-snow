@@ -1,0 +1,75 @@
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+:root {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color-scheme: dark;
+  background-color: #0a0a14;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+}
+
+canvas {
+  outline: none !important;
+}
+
+#map {
+  width: 100vw;
+  height: 100vh;
+}
+
+#controls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #e0e0e0;
+  font-size: 13px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#controls h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+#controls h4 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#controls input[type='range'] {
+  width: 100%;
+  accent-color: #88ccff;
+}
+
+#controls input[type='checkbox'] {
+  accent-color: #88ccff;
+  margin-right: 6px;
+}
