@@ -1,0 +1,12 @@
+{
+  "name": "@geoql/maplibre-gl-snow",
+  "version": "0.0.1",
+  "exports": "./dist/index.mjs",
+  "publish": {
+    "include": [
+      "dist",
+      "README.md",
+      "LICENSE"
+    ]
+  }
+}
