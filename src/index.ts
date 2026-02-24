@@ -95,7 +95,7 @@ class SnowGPU {
   private uHalfSpan = uniform(0.005);
   private uAltSpan = uniform(0.0025);
   private uRadius = uniform(1e-6);
-  private uFallSpeed = uniform(0.0002);
+  private uFallSpeed = uniform(0.0);
   private uWindX = uniform(0.0);
   private uWindY = uniform(0.0);
   private uOpacity = uniform(0.8);
@@ -183,15 +183,16 @@ class SnowGPU {
       const rs = hash(instanceIndex.add(randUint()));
 
       // Spawn in a box centered at uCenter
+      // Spawn in a box centered at uCenter, scattered vertically
       pos.x = uCenter.x.add(rx.mul(uHalfSpan.mul(2.0)).sub(uHalfSpan));
       pos.y = uCenter.y.add(ry.mul(uHalfSpan.mul(2.0)).sub(uHalfSpan));
       pos.z = rz.mul(uAltSpan); // altitude [0, altSpan]
-
-      // Fall speed proportional to uFallSpeed; seed stored in vel.w
+      // vel.z is a per-particle random multiplier [0.5, 1.0].
+      // Actual fall delta = uFallSpeed * vel.z, computed live in update shader.
       vel.x = float(0.0);
       vel.y = float(0.0);
-      vel.z = uFallSpeed.negate().mul(rs.mul(0.5).add(0.5)); // random fall rate
-      vel.w = rs; // random seed
+      vel.z = rs.mul(0.5).add(0.5); // random speed multiplier, NOT absolute speed
+      vel.w = rs; // random seed for drift
     });
 
     this.computeInit = initFn().compute(N);
@@ -203,29 +204,21 @@ class SnowGPU {
     const updateFn = Fn(() => {
       const pos = posBuffer.element(instanceIndex);
       const vel = velBuffer.element(instanceIndex);
-
-      // Apply wind + fall
+      // Fall: actual delta = uFallSpeed * per-particle multiplier (vel.z)
+      // Wind: uWindX / uWindY are already in merc-units/frame
       pos.x = pos.x.add(uWindX);
       pos.y = pos.y.add(uWindY);
-      pos.z = pos.z.add(vel.z);
+      pos.z = pos.z.sub(uFallSpeed.mul(vel.z));
 
-      // Respawn when below ground or out of horizontal bounds
-      const outH = pos.x
-        .lessThan(uCenter.x.sub(uHalfSpan.mul(1.5)))
-        .or(pos.x.greaterThan(uCenter.x.add(uHalfSpan.mul(1.5))))
-        .or(pos.y.lessThan(uCenter.y.sub(uHalfSpan.mul(1.5))))
-        .or(pos.y.greaterThan(uCenter.y.add(uHalfSpan.mul(1.5))));
-
-      const outV = pos.z.lessThan(float(0.0));
-
-      If(outV.or(outH), () => {
+      // Only respawn when particle has fallen below ground (pos.z < 0).
+      // No horizontal OOB check — that caused jitter when uCenter moved each frame.
+      If(pos.z.lessThan(float(0.0)), () => {
         const rx2 = hash(
           instanceIndex.add(uint(Math.floor(Math.random() * 0xffffff))),
         );
         const ry2 = hash(
           instanceIndex.add(uint(Math.floor(Math.random() * 0xffffff))),
         );
-
         pos.x = uCenter.x.add(rx2.mul(uHalfSpan.mul(2.0)).sub(uHalfSpan));
         pos.y = uCenter.y.add(ry2.mul(uHalfSpan.mul(2.0)).sub(uHalfSpan));
         pos.z = uAltSpan; // respawn at top
@@ -235,7 +228,7 @@ class SnowGPU {
     this.computeUpdate = updateFn().compute(N);
 
     // ----- Snow flake mesh -----
-    const geometry = new THREE.SphereGeometry(1, 4, 4);
+    const geometry = new THREE.SphereGeometry(1, 12, 12);
 
     const material = new THREE.MeshBasicNodeMaterial({
       transparent: true,
@@ -536,34 +529,25 @@ class MaplibreSnowLayer {
 
   render(_gl: WebGL2RenderingContext, args: CustomRenderMethodInput): void {
     if (!this.gpu?.ready || !this.map) return;
-
     const now = performance.now();
     const dt = now - this._lastFrameTime;
     if (this._lastFrameTime > 0 && dt > 0) {
-      this._fps = 1000 / dt;
+      const instantFps = 1000 / dt;
+      this._fps = this._fps * 0.9 + instantFps * 0.1;
     }
     this._lastFrameTime = now;
-
     const fps = Math.max(10, Math.min(120, this._fps));
     const zoom = this.map.getZoom();
     const center = this.map.getCenter();
     const dpr = window.devicePixelRatio;
     const cssW = this.map.getContainer().clientWidth;
-
-    // Convert center to mercator
     const merc = lngLatToMercator(center.lng, center.lat);
-
-    // Update uniforms
-    this.gpu.runInit();
     this.gpu.updateSpatial(merc.x, merc.y, zoom, cssW);
     this.gpu.updateFlakeRadius(this._flakeSize, zoom, dpr);
     this.gpu.updateWind(this._direction[0], this._direction[1], zoom, fps);
     this.gpu.updateFallSpeed(this._intensity, zoom, fps);
-
-    // Draw frame using MapLibre's projection matrix
+    this.gpu.runInit();
     this.gpu.frame(new Float32Array(args.defaultProjectionData.mainMatrix));
-
-    // Keep animating
     this.map.triggerRepaint();
   }
 
