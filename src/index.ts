@@ -469,7 +469,10 @@ class MaplibreSnowLayer {
   // MapLibre lifecycle
   // -------------------------------------------------------------------------
 
-  onAdd(map: MaplibreMap, _gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+  onAdd(
+    map: MaplibreMap,
+    _gl: WebGL2RenderingContext | WebGLRenderingContext,
+  ): void {
     this.map = map;
 
     const container = map.getContainer();
@@ -526,7 +529,10 @@ class MaplibreSnowLayer {
     });
   }
 
-  render(_gl: WebGL2RenderingContext | WebGLRenderingContext, args: CustomRenderMethodInput): void {
+  render(
+    _gl: WebGL2RenderingContext | WebGLRenderingContext,
+    args: CustomRenderMethodInput,
+  ): void {
     if (!this.gpu?.ready || !this.map) return;
     const now = performance.now();
     const dt = now - this._lastFrameTime;
@@ -550,7 +556,10 @@ class MaplibreSnowLayer {
     this.map.triggerRepaint();
   }
 
-  onRemove(_map: MaplibreMap, _gl: WebGL2RenderingContext | WebGLRenderingContext): void {
+  onRemove(
+    _map: MaplibreMap,
+    _gl: WebGL2RenderingContext | WebGLRenderingContext,
+  ): void {
     this.resizeObserver?.disconnect();
     this.gpu?.dispose();
 

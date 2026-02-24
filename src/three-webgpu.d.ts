@@ -28,7 +28,9 @@ interface TslComputePipeline {
   readonly _isComputePipeline: true;
 }
 
-type TslFnCallable = (() => TslNodeWithCompute) & { compute(count: number): TslComputePipeline };
+type TslFnCallable = (() => TslNodeWithCompute) & {
+  compute(count: number): TslComputePipeline;
+};
 
 declare module 'three/webgpu' {
   class Vector2 {
@@ -58,7 +60,11 @@ declare module 'three/webgpu' {
   }
 
   class SphereGeometry extends BufferGeometry {
-    constructor(radius?: number, widthSegments?: number, heightSegments?: number);
+    constructor(
+      radius?: number,
+      widthSegments?: number,
+      heightSegments?: number,
+    );
   }
 
   class PlaneGeometry extends BufferGeometry {
@@ -70,7 +76,11 @@ declare module 'three/webgpu' {
   }
 
   class MeshBasicNodeMaterial extends Material {
-    constructor(options?: { transparent?: boolean; depthWrite?: boolean; depthTest?: boolean });
+    constructor(options?: {
+      transparent?: boolean;
+      depthWrite?: boolean;
+      depthTest?: boolean;
+    });
     positionNode: TslNode | null;
     colorNode: TslNode | null;
   }
@@ -101,7 +111,11 @@ declare module 'three/webgpu' {
   }
 
   class WebGPURenderer {
-    constructor(options?: { canvas?: HTMLCanvasElement; antialias?: boolean; alpha?: boolean });
+    constructor(options?: {
+      canvas?: HTMLCanvasElement;
+      antialias?: boolean;
+      alpha?: boolean;
+    });
     init(): Promise<void>;
     render(scene: Scene, camera: PerspectiveCamera): void;
     compute(pipeline: TslComputePipeline): void;
