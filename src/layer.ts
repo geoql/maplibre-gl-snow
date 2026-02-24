@@ -19,7 +19,11 @@ type MaplibreSnowLayerOptions = {
   flakeSize?: number;
   /** Flake color as [r, g, b] in 0–1 range (default: [1, 1, 1]) */
   color?: [number, number, number];
-  /** Wind direction as [horizontal, vertical] speed (default: [0, 50]) */
+  /**
+   * Wind as [horizontal, vertical] speed at bearing=0 (north-up).
+   * Automatically rotated by map bearing, so wind direction is world-relative.
+   * (default: [0, 0])
+   */
   direction?: [number, number];
   /** Global opacity multiplier 0–1 (default: 0.8) */
   opacity?: number;
@@ -30,33 +34,6 @@ type MaplibreSnowLayerOptions = {
   /** Fog opacity 0–1 (default: 0.08) */
   fogOpacity?: number;
 };
-
-// ---------------------------------------------------------------------------
-// Inline mercator math (avoids runtime import of maplibre-gl for SSR safety)
-// ---------------------------------------------------------------------------
-
-const EARTH_RADIUS = 6378137;
-
-/**
- * Convert lng/lat to Mercator [x, y] in 0..1 range.
- * Equivalent to MercatorCoordinate.fromLngLat({lng, lat})
- */
-function lngLatToMercator(lng: number, lat: number): { x: number; y: number } {
-  const x = (lng + 180) / 360;
-  const latRad = (lat * Math.PI) / 180;
-  const y =
-    (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
-  return { x, y };
-}
-
-/**
- * Mercator coordinate units per meter at a given latitude.
- * Equivalent to MercatorCoordinate#meterInMercatorCoordinateUnits()
- */
-function meterInMercatorUnits(lat: number): number {
-  const latRad = (lat * Math.PI) / 180;
-  return 1 / (2 * Math.PI * EARTH_RADIUS * Math.cos(latRad));
-}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -95,12 +72,10 @@ const ATTRIBS: readonly AttribMeta[] = [
 // ---------------------------------------------------------------------------
 
 const UNIFORM_NAMES = [
-  'u_center',
-  'u_meterScale',
-  'u_spread',
   'u_time',
   'u_intensity',
   'u_direction',
+  'u_bearing',
   'u_flakeSize',
   'u_color',
   'u_opacity',
@@ -157,10 +132,6 @@ class MaplibreSnowLayer implements CustomLayerInterface {
   private attribLocations: number[] = [];
   private uniforms: Record<UniformName, WebGLUniformLocation | null> =
     {} as Record<UniformName, WebGLUniformLocation | null>;
-  private matrixUniform: WebGLUniformLocation | null = null;
-
-  // Pre-allocated buffer to avoid per-frame allocation
-  private matrixBuffer: Float32Array = new Float32Array(16);
 
   // Fog GL resources
   private fogProgram: WebGLProgram | null = null;
@@ -175,7 +146,7 @@ class MaplibreSnowLayer implements CustomLayerInterface {
     this._intensity = options.intensity ?? 0.5;
     this._flakeSize = options.flakeSize ?? 4;
     this._color = options.color ?? [1, 1, 1];
-    this._direction = options.direction ?? [0, 50];
+    this._direction = options.direction ?? [0, 0];
     this._opacity = options.opacity ?? 0.8;
     this._fog = options.fog ?? true;
     this._fogColor = options.fogColor ?? [0.18, 0.2, 0.28];
@@ -250,9 +221,6 @@ class MaplibreSnowLayer implements CustomLayerInterface {
       gl.getAttribLocation(this.program!, a.name),
     );
 
-    // Matrix uniform (separate — needs uniformMatrix4fv)
-    this.matrixUniform = gl.getUniformLocation(this.program!, 'u_matrix');
-
     for (const name of UNIFORM_NAMES) {
       this.uniforms[name] = gl.getUniformLocation(this.program!, name);
     }
@@ -279,24 +247,16 @@ class MaplibreSnowLayer implements CustomLayerInterface {
     this.buildParticleBuffer(gl);
   }
 
-  render(gl: GL, args: CustomRenderMethodInput): void {
+  render(gl: GL, _args: CustomRenderMethodInput): void {
     if (!this.program || !this.buffer || this.particleCount === 0 || !this.map)
       return;
 
     // Elapsed time in seconds
     const elapsed = (performance.now() - this.startTime) / 1000.0;
 
-    // --- Camera-derived uniforms ---
-    const center = this.map.getCenter();
-    const mercCenter = lngLatToMercator(center.lng, center.lat);
-    const meterScale = meterInMercatorUnits(center.lat);
-
-    const zoom = this.map.getZoom();
-    const pitch = this.map.getPitch();
-    const baseSpread = 1 / Math.pow(2, zoom);
-    // When pitched, we see further into the distance — widen spread
-    const pitchFactor = 1 + Math.tan((pitch * Math.PI) / 180) * 0.5;
-    const spread = baseSpread * pitchFactor * 1.5;
+    // Map bearing in radians — used to rotate wind direction so it stays
+    // world-relative as the user rotates the map
+    const bearingRad = (this.map.getBearing() * Math.PI) / 180;
 
     // --- Save GL state ---
     const prevProgram = gl.getParameter(
@@ -312,7 +272,7 @@ class MaplibreSnowLayer implements CustomLayerInterface {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-    // --- Draw atmospheric fog (no depth test — fullscreen overlay) ---
+    // --- Draw atmospheric fog (fullscreen overlay, no depth test) ---
     if (this._fog && this.fogProgram && this.fogBuffer) {
       gl.disable(gl.DEPTH_TEST);
       gl.depthMask(false);
@@ -341,28 +301,15 @@ class MaplibreSnowLayer implements CustomLayerInterface {
       }
     }
 
-    // --- Draw snow particles (depth test ON, depth write OFF) ---
-    // Depth test: particles behind buildings get occluded (3D integration)
-    // Depth write off: transparent particles don't occlude each other
-    gl.enable(gl.DEPTH_TEST);
+    // --- Draw snow particles (screen-space NDC — no depth test needed) ---
+    // Depth test is disabled: snow is a weather overlay, always visible.
+    // Depth write is off: transparent particles don't occlude each other.
+    gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
 
     gl.useProgram(this.program);
 
-    // defaultProjectionData.mainMatrix: correct matrix for normalized mercator [0,1] coords
-    // (modelViewProjectionMatrix is a different space and would put particles off-screen)
-    const mvp = args.defaultProjectionData.mainMatrix;
-    for (let i = 0; i < 16; i++) {
-      this.matrixBuffer[i] = (mvp as unknown as ArrayLike<number>)[i]!;
-    }
-    gl.uniformMatrix4fv(this.matrixUniform, false, this.matrixBuffer);
-
-    // Camera-derived uniforms
-    gl.uniform2f(this.uniforms.u_center, mercCenter.x, mercCenter.y);
-    gl.uniform1f(this.uniforms.u_meterScale, meterScale);
-    gl.uniform1f(this.uniforms.u_spread, spread);
-
-    // Animation uniforms
+    // Animation + camera uniforms
     gl.uniform1f(this.uniforms.u_time, elapsed);
     gl.uniform1f(this.uniforms.u_intensity, this._intensity);
     gl.uniform2f(
@@ -370,6 +317,8 @@ class MaplibreSnowLayer implements CustomLayerInterface {
       this._direction[0],
       this._direction[1],
     );
+    // Bearing rotates the wind vector in the shader so wind is world-relative
+    gl.uniform1f(this.uniforms.u_bearing, bearingRad);
     gl.uniform1f(this.uniforms.u_flakeSize, this._flakeSize);
     gl.uniform1f(this.uniforms.u_screenHeight, gl.canvas.height);
     gl.uniform3f(
@@ -457,23 +406,26 @@ class MaplibreSnowLayer implements CustomLayerInterface {
       let opacityBase: number;
 
       if (layerRand < 0.55) {
+        // Background layer: tiny, faint
         sizeBase = 0.4 + Math.random() * 0.4;
         opacityBase = 0.15 + Math.random() * 0.2;
       } else if (layerRand < 0.88) {
+        // Mid layer
         sizeBase = 0.7 + Math.random() * 0.6;
         opacityBase = 0.25 + Math.random() * 0.3;
       } else {
+        // Foreground layer: large, bright
         sizeBase = 1.0 + Math.random() * 1.5;
         opacityBase = 0.4 + Math.random() * 0.4;
       }
 
-      data[offset] = Math.random() * 2 - 1; // offsetX
-      data[offset + 1] = Math.random() * 2 - 1; // offsetY
+      data[offset] = Math.random() * 2 - 1; // offsetX: initial screen X in [-1, 1]
+      data[offset + 1] = Math.random() * 2 - 1; // offsetY: unused by shader (kept for stride compat)
       data[offset + 2] = 0.3 + Math.random() * 0.4; // speed
       data[offset + 3] = sizeBase; // size (layer-dependent)
       data[offset + 4] = opacityBase; // opacity (layer-dependent)
-      data[offset + 5] = Math.random() * TWO_PI; // phase
-      data[offset + 6] = Math.random(); // altitude (0..1)
+      data[offset + 5] = Math.random() * TWO_PI; // phase (also determines depth layer via golden ratio)
+      data[offset + 6] = Math.random(); // altitude: initial Y position [0, 1]
     }
 
     if (this.buffer) {

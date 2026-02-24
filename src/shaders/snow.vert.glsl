@@ -8,13 +8,13 @@ in float a_opacity;
 in float a_phase;
 in float a_altitude;
 
-uniform mat4 u_matrix;
-uniform vec2 u_center;
-uniform float u_meterScale;
-uniform float u_spread;
+// No u_matrix / u_center / u_spread — particles are in screen-space NDC.
+// This means snow fills the viewport correctly at any pitch/bearing/zoom.
+
 uniform float u_time;
 uniform float u_intensity;
-uniform vec2 u_direction;
+uniform vec2 u_direction;   // wind: [horizontal, vertical] speed (screen-space at bearing=0)
+uniform float u_bearing;    // map bearing in radians — rotates wind so it's world-relative
 uniform float u_flakeSize;
 uniform float u_screenHeight;
 
@@ -24,36 +24,44 @@ out float v_alt;
 void main() {
     float t = u_time + a_phase * 8.0;
 
-    // Falling: alt01 decreases over time (0 = ground, 1 = top)
+    // Falling: alt01 = 1.0 (top of screen) → 0.0 (bottom), loops continuously
     float fallRate = a_speed * u_intensity * 0.06;
     float alt01 = fract(a_altitude + a_phase * 0.5 - fallRate * t * 0.04);
 
-    // Z: negative = below camera, so snowflakes fall downward
-    float maxAltMeters = 80.0;
-    float mercZ = -alt01 * maxAltMeters * u_meterScale;
+    // Screen Y: top (alt01=1) → bottom (alt01=0)
+    float sy = alt01 * 2.0 - 1.0;
 
-    // Lateral drift (sinusoidal for organic motion)
-    float drift = sin(t * 0.25 + a_phase * 3.0) * 0.03
-                + sin(t * 0.13 + a_phase * 5.7) * 0.015
-                + cos(t * 0.19 + a_phase * 7.3) * 0.01;
+    // Bearing-relative wind: rotate wind vector by map bearing so that the wind
+    // direction stays consistent relative to the world as the map rotates.
+    //   bearing=0°  → east wind blows right on screen
+    //   bearing=90° → east wind blows downward on screen
+    float cb = cos(u_bearing);
+    float sb = sin(u_bearing);
+    float wx = u_direction.x * cb - u_direction.y * sb;
+    float wy = u_direction.x * sb + u_direction.y * cb;
+    float windX = wx * 0.000012 * t;
+    float windY = wy * 0.000012 * t;  // subtle vertical wind component
 
-    // Wind horizontal offset (accumulates over time)
-    float windX = u_direction.x * 0.00003 * t;
+    // Lateral drift (sinusoidal for organic, non-mechanical feel)
+    float drift = sin(t * 0.25 + a_phase * 3.0) * 0.025
+                + sin(t * 0.13 + a_phase * 5.7) * 0.012
+                + cos(t * 0.19 + a_phase * 7.3) * 0.008;
 
-    // Wrap within [-1..1] spread around center
-    float ox = fract((a_offset.x + drift + windX) * 0.5 + 0.5) * 2.0 - 1.0;
-    float oy = fract(a_offset.y * 0.5 + 0.5) * 2.0 - 1.0;
+    // Screen X/Y: wrap within [-1, 1]
+    float sx = fract((a_offset.x + drift + windX) * 0.5 + 0.5) * 2.0 - 1.0;
+    // Incorporate vertical wind into the fall position (modifies alt01's effective range)
+    float sy_final = clamp(sy + windY * alt01, -1.1, 1.1);
 
-    // Mercator position (normalized [0,1] — works with defaultProjectionData.mainMatrix)
-    float mercX = u_center.x + ox * u_spread;
-    float mercY = u_center.y + oy * u_spread;
+    // Depth layer per particle: golden-ratio scramble → uniform [0,1] distribution
+    // Low depthLayer = near camera = large + opaque; high = far = small + faint
+    float depthLayer = fract(a_phase * 1.618);
+    float closeness = 1.0 - depthLayer;
 
-    gl_Position = u_matrix * vec4(mercX, mercY, mercZ, 1.0);
+    // Output directly in clip space — no MVP matrix needed for screen-space rendering
+    gl_Position = vec4(sx, sy_final, 0.0, 1.0);
 
-    // Depth-based size: lower altitude (closer to ground) = larger flakes
-    float depthScale = 1.0 - alt01 * 0.5;
-    gl_PointSize = a_size * u_flakeSize * depthScale * (u_screenHeight / 800.0);
-    // Depth-based opacity: distant flakes (high alt01) are slightly more transparent
-    v_opacity = a_opacity * (0.6 + (1.0 - alt01) * 0.4);
+    // Atmospheric perspective: closer particles larger and more opaque
+    gl_PointSize = a_size * u_flakeSize * (0.25 + closeness * 0.75) * (u_screenHeight / 800.0);
+    v_opacity = a_opacity * (0.35 + closeness * 0.65);
     v_alt = alt01;
 }
