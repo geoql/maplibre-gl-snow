@@ -2,14 +2,15 @@
   "name": "@geoql/maplibre-gl-snow",
   "version": "0.0.1",
   "private": false,
-  "description": "A MapLibre GL JS custom layer for rendering falling snow particles via WebGL",
+  "description": "A MapLibre GL JS custom layer for rendering falling snow particles via Three.js WebGPU compute shaders",
   "keywords": [
     "layer",
     "maplibre",
     "particles",
     "snow",
+    "three.js",
     "weather",
-    "webgl"
+    "webgpu"
   ],
   "homepage": "https://github.com/geoql/maplibre-gl-snow#readme",
   "bugs": {
@@ -63,11 +64,13 @@
     "maplibre-gl": "^5.19.0",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
+    "three": "^0.183.1",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "maplibre-gl": ">=3.0.0"
+    "maplibre-gl": ">=3.0.0",
+    "three": ">=0.183.0"
   },
   "engines": {
     "node": ">=24.0.0"

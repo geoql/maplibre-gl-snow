@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@geoql/maplibre-gl-snow": "file:..",
-    "maplibre-gl": "^5.19.0"
+    "maplibre-gl": "^5.19.0",
+    "three": "^0.183.1"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
