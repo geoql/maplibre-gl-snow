@@ -24,8 +24,6 @@ import {
   If,
   color,
   screenUV,
-  uv,
-  smoothstep,
 } from 'three/tsl';
 import type { CustomRenderMethodInput, Map as MaplibreMap } from 'maplibre-gl';
 
@@ -101,10 +99,6 @@ class SnowGPU {
   private uWindY = uniform(0.0);
   private uOpacity = uniform(0.8);
   private uColor = uniform(new THREE.Color(1, 1, 1));
-
-  // Billboard orientation (camera-facing quads)
-  private uBillboardRight = uniform(new THREE.Vector3(1, 0, 0));
-  private uBillboardUp = uniform(new THREE.Vector3(0, 0, 1));
 
   // Fog overlay
   private fogMesh: THREE.Mesh | null = null;
@@ -233,10 +227,10 @@ class SnowGPU {
     this.computeUpdate = updateFn().compute(N);
 
     // ----- Snow flake mesh -----
-    // Billboard PlaneGeometry: 2 triangles per flake (vs ~288 with 12-segment sphere).
-    // Soft circle carved in fragment shader via UV distance — always perfectly round
-    // regardless of zoom, pitch, or screen size.
-    const geometry = new THREE.PlaneGeometry(2, 2);
+    // High-poly sphere for smooth circles at any zoom/pitch.
+    // 32x32 segments = 1024 triangles per sphere (vs 288 with 12x12).
+    // Provides true 3D depth with perspective.
+    const geometry = new THREE.SphereGeometry(1, 32, 32);
 
     const material = new THREE.MeshBasicNodeMaterial({
       transparent: true,
@@ -247,24 +241,13 @@ class SnowGPU {
     const uRadius = this.uRadius;
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
-    const uBRight = this.uBillboardRight;
-    const uBUp = this.uBillboardUp;
 
-    // Billboard position: orient quad to always face camera.
-    // positionLocal.x/y are [-1, 1] quad vertex coords in local space.
-    // Billboard right/up vectors are computed per-frame from camera pitch/bearing.
-    const particleCenter = posBuffer.toAttribute();
-    const billboardOffset = uBRight
-      .mul(positionLocal.x)
-      .add(uBUp.mul(positionLocal.y))
-      .mul(uRadius);
-    material.positionNode = particleCenter.add(billboardOffset);
+    // Scale unit sphere by radius, offset by particle mercator position
+    material.positionNode = positionLocal
+      .mul(uRadius)
+      .add(posBuffer.toAttribute());
 
-    // Soft circle: UV distance from center → smooth round flakes at any zoom/pitch.
-    // smoothstep(1.0, 0.6, dist) = 1.0 inside radius 0.6, 0.0 outside 1.0, smooth between.
-    const uvDist = uv().distance(float(0.5)).mul(2.0);
-    const circle = smoothstep(float(1.0), float(0.6), uvDist);
-    material.colorNode = vec4(uColor, circle.mul(uOpacity));
+    material.colorNode = vec4(uColor, uOpacity);
 
     this.snowMesh = new THREE.Mesh(geometry, material);
     this.snowMesh.count = N;
@@ -327,7 +310,7 @@ class SnowGPU {
   // Called once on first render to initialize particle positions
   private _initRan = false;
   runInit(): void {
-    if (this._initRan || !this.renderer || !this.computeInit) return;
+    if (this._initRan || !this.computeInit || !this.renderer) return;
     this.renderer.compute(this.computeInit);
     this._initRan = true;
   }
@@ -377,23 +360,6 @@ class SnowGPU {
     const pxToMerc = 1 / (512 * Math.pow(2, zoom));
     // base fall = 40 px/s * intensity, converted to merc/frame
     this.uFallSpeed.value = (40 * intensity * pxToMerc) / fps;
-  }
-
-  updateBillboard(pitchDeg: number, bearingDeg: number): void {
-    const p = (pitchDeg * Math.PI) / 180;
-    const b = (bearingDeg * Math.PI) / 180;
-
-    // Camera right vector in Mercator space (always horizontal)
-    this.uBillboardRight.value.set(Math.cos(b), Math.sin(b), 0);
-
-    // Camera up vector in Mercator space (tilts with pitch)
-    // At pitch=0: purely horizontal (north direction on map)
-    // At pitch=90: purely vertical (altitude axis)
-    this.uBillboardUp.value.set(
-      Math.sin(b) * Math.sin(p),
-      -Math.cos(b) * Math.sin(p),
-      Math.cos(p),
-    );
   }
 
   // -------------------------------------------------------------------------
@@ -581,14 +547,12 @@ class MaplibreSnowLayer {
     const fps = Math.max(10, Math.min(120, this._fps));
     const zoom = this.map.getZoom();
     const center = this.map.getCenter();
-    const dpr = window.devicePixelRatio;
     const cssW = this.map.getContainer().clientWidth;
     const merc = lngLatToMercator(center.lng, center.lat);
     this.gpu.updateSpatial(merc.x, merc.y, zoom, cssW);
-    this.gpu.updateFlakeRadius(this._flakeSize, zoom, dpr);
+    this.gpu.updateFlakeRadius(this._flakeSize, zoom, window.devicePixelRatio);
     this.gpu.updateWind(this._direction[0], this._direction[1], zoom, fps);
     this.gpu.updateFallSpeed(this._intensity, zoom, fps);
-    this.gpu.updateBillboard(this.map.getPitch(), this.map.getBearing());
     this.gpu.runInit();
     this.gpu.frame(new Float32Array(args.defaultProjectionData.mainMatrix));
     this.map.triggerRepaint();

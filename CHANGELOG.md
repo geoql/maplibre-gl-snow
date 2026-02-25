@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.2...v0.0.3) (2026-02-25)
+
+
+### Bug Fixes
+
+* render snowflakes as billboarded quads with soft-circle shader ([5fec523](https://github.com/geoql/maplibre-gl-snow/commit/5fec523438068a5d82030ca6763f74985d26ef5d))
+
 ## [0.0.2](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.1...v0.0.2) (2026-02-24)
 
 
