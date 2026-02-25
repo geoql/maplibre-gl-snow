@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.4...v0.0.5) (2026-02-25)
+
+
+### Bug Fixes
+
+* add extra-files for JSR publishing ([24d38b7](https://github.com/geoql/maplibre-gl-snow/commit/24d38b721b52838bceb10889440c580818d05306))
+
 ## [0.0.4](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.3...v0.0.4) (2026-02-25)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@geoql/maplibre-gl-snow",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": false,
   "description": "A MapLibre GL JS custom layer for rendering falling snow particles via Three.js WebGPU compute shaders",
   "keywords": [
