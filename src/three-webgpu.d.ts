@@ -7,6 +7,10 @@ interface TslNode {
   distance(other: TslNode | number): TslNode;
   toAttribute(): TslNode;
   element(index: TslNode): TslWritableElement;
+  x: TslNode;
+  y: TslNode;
+  z: TslNode;
+  w: TslNode;
 }
 
 interface TslWritableElement extends TslNode {
@@ -38,6 +42,14 @@ declare module 'three/webgpu' {
     x: number;
     y: number;
     set(x: number, y: number): this;
+  }
+
+  class Vector3 {
+    constructor(x?: number, y?: number, z?: number);
+    x: number;
+    y: number;
+    z: number;
+    set(x: number, y: number, z: number): this;
   }
 
   class Matrix4 {
@@ -132,15 +144,28 @@ declare module 'three/tsl' {
   export function Fn(fn: () => void): TslFnCallable;
   export function float(value: number): TslNode;
   export function uint(value: number): TslNode;
-  export function vec4(x: TslNode | Color, y: TslNode | number): TslNode;
+  export function vec4(
+    x: TslNode | Color,
+    y?: TslNode | number,
+    z?: TslNode | number,
+    w?: TslNode | number,
+  ): TslNode;
   export const instanceIndex: TslNode;
-  export function instancedArray(count: number, type: string): TslNode;
   export const positionLocal: TslNode;
+  export const instanceUV: TslNode;
+  export function instancedArray(count: number, type: string): TslNode;
   export function uniform(value: Vector2): TslUniform<Vector2>;
+  export function uniform(value: Vector3): TslUniform<Vector3>;
   export function uniform(value: Color): TslUniform<Color>;
   export function uniform(value: number): TslUniform<number>;
   export function hash(seed: TslNode): TslNode;
   export function If(condition: TslNode, thenFn: () => void): void;
   export function color(hex: number): TslNode;
   export const screenUV: TslNode;
+  export function uv(): TslNode;
+  export function smoothstep(
+    edge0: TslNode | number,
+    edge1: TslNode | number,
+    x: TslNode | number,
+  ): TslNode;
 }
