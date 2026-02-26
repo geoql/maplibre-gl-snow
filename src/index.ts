@@ -272,14 +272,17 @@ class SnowGPU {
       .add(uCamUp.mul(localY).mul(uRadius))
       .add(posBuffer.element(instanceIndex));
 
-    // Circle SDF via UV: mirrors the proven screenUV.distance() pattern from fog.
-    // PlaneGeometry UVs go (0,0)→(1,1); center is (0.5,0.5).
-    // dist=0 at center, ≈0.5 at circle edge, ≈0.707 at corners.
+    // 3D sphere shading: crisp circular disc + Lambertian diffuse.
+    // dist = 0 at UV centre, 0.5 at the disc edge (PlaneGeometry UV is [0,1]).
+    // Quad corners reach dist ~0.707 and are fully transparent.
     const dist = uv().distance(float(0.5));
-    const alpha = float(1.0)
-      .sub(smoothstep(float(0.45), float(0.5), dist))
-      .mul(uOpacity);
-    material.colorNode = vec4(uColor, alpha);
+    // Crisp circular disc with soft antialiased edge (~1px falloff at rim).
+    const mask = float(1.0).sub(smoothstep(float(0.42), float(0.5), dist));
+    // Lambertian diffuse: bright at centre (normal faces viewer), dims at rim.
+    const ndotl = float(1.0).sub(smoothstep(float(0.0), float(0.5), dist));
+    // 30% ambient + 70% diffuse = full white centre, 30% grey rim -> sphere illusion.
+    const brightness = float(0.3).add(ndotl.mul(float(0.7)));
+    material.colorNode = vec4(uColor.mul(brightness), mask.mul(uOpacity));
 
     this.snowMesh = new THREE.Mesh(geometry, material);
     this.snowMesh.count = N;
@@ -304,7 +307,7 @@ class SnowGPU {
     // Radial vignette fog (blue-white tint)
     const vignette = screenUV.distance(float(0.5)).mul(2.0).saturate();
     mat.colorNode = vec4(
-      color(0xd0e4f7), // cool blue-white
+      color(0xffffff), // white atmospheric haze (matches Mapbox vignette-color: #ffffff)
       vignette.mul(uFogOpacity),
     );
 
