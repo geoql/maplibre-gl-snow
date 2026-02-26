@@ -25,6 +25,7 @@ import {
   color,
   screenUV,
   smoothstep,
+  uv,
 } from 'three/tsl';
 import type { CustomRenderMethodInput, Map as MaplibreMap } from 'maplibre-gl';
 
@@ -240,7 +241,9 @@ class SnowGPU {
       depthWrite: false,
       depthTest: false,
     });
-
+    // DoubleSide (=2) not typed in three/webgpu; set at runtime so the plane
+    // renders regardless of winding order after MapLibre's projection transform.
+    Object.assign(material, { side: 2 });
     const uRadius = this.uRadius;
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
@@ -250,12 +253,12 @@ class SnowGPU {
       .mul(uRadius)
       .add(posBuffer.element(instanceIndex));
 
-    // Circle SDF: smooth round disc using distance from local origin.
-    // positionLocal for PlaneGeometry spans [-1,1] in XY (Z=0).
-    // smoothstep fades alpha from 1 (dist<0.85) to 0 (dist>1.0).
-    const dist = positionLocal.distance(float(0.0));
+    // Circle SDF via UV: mirrors the proven screenUV.distance() pattern from fog.
+    // PlaneGeometry UVs go (0,0)→(1,1); center is (0.5,0.5).
+    // dist=0 at center, ≈0.5 at circle edge, ≈0.707 at corners.
+    const dist = uv().distance(float(0.5));
     const alpha = float(1.0)
-      .sub(smoothstep(float(0.85), float(1.0), dist))
+      .sub(smoothstep(float(0.45), float(0.5), dist))
       .mul(uOpacity);
     material.colorNode = vec4(uColor, alpha);
 
