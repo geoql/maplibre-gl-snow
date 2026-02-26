@@ -24,6 +24,7 @@ import {
   If,
   color,
   screenUV,
+  smoothstep,
 } from 'three/tsl';
 import type { CustomRenderMethodInput, Map as MaplibreMap } from 'maplibre-gl';
 
@@ -227,11 +228,12 @@ class SnowGPU {
     this.computeUpdate = updateFn().compute(N);
 
     // ----- Snow flake mesh -----
-    // SphereGeometry(1, 64, 32): smooth spherical snowflakes with 3D depth.
-    // Using posBuffer.element(instanceIndex) instead of toAttribute() so that
-    // the entire sphere instance reads ONE particle position (per-instance),
-    // not a different position per vertex (which caused scattered triangle/square artefacts).
-    const geometry = new THREE.SphereGeometry(1, 64, 32);
+    // PlaneGeometry(2, 2): flat XY disc with zero Z-extent.
+    // SphereGeometry caused a '+' artefact at pitched views because MapLibre's
+    // mercator projection stretches altitude (Z), elongating the sphere's poles.
+    // A flat plane in XY has no local Z → no altitude stretch.
+    // posBuffer.element(instanceIndex) reads ONE particle position per-instance.
+    const geometry = new THREE.PlaneGeometry(2, 2);
 
     const material = new THREE.MeshBasicNodeMaterial({
       transparent: true,
@@ -243,12 +245,19 @@ class SnowGPU {
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
 
-    // Scale sphere by radius, offset by particle position (per-instance read)
+    // Scale disc by radius, offset to particle position (per-instance read)
     material.positionNode = positionLocal
       .mul(uRadius)
       .add(posBuffer.element(instanceIndex));
 
-    material.colorNode = vec4(uColor, uOpacity);
+    // Circle SDF: smooth round disc using distance from local origin.
+    // positionLocal for PlaneGeometry spans [-1,1] in XY (Z=0).
+    // smoothstep fades alpha from 1 (dist<0.85) to 0 (dist>1.0).
+    const dist = positionLocal.distance(float(0.0));
+    const alpha = float(1.0)
+      .sub(smoothstep(float(0.85), float(1.0), dist))
+      .mul(uOpacity);
+    material.colorNode = vec4(uColor, alpha);
 
     this.snowMesh = new THREE.Mesh(geometry, material);
     this.snowMesh.count = N;
