@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.5...v0.0.6) (2026-02-26)
+
+
+### Bug Fixes
+
+* use element(instanceIndex) for per-instance particle positioning ([9fda44c](https://github.com/geoql/maplibre-gl-snow/commit/9fda44c90bec347444102a1c1a143f3f5998b447))
+
 ## [0.0.5](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.4...v0.0.5) (2026-02-25)
 
 
