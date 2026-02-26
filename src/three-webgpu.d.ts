@@ -2,6 +2,7 @@ interface TslNode {
   add(other: TslNode | number): TslNode;
   sub(other: TslNode | number): TslNode;
   mul(other: TslNode | number): TslNode;
+  div(other: TslNode | number): TslNode;
   lessThan(other: TslNode | number): TslNode;
   saturate(): TslNode;
   distance(other: TslNode | number): TslNode;
@@ -53,6 +54,8 @@ declare module 'three/webgpu' {
   }
 
   class Matrix4 {
+    constructor();
+    elements: number[];
     fromArray(array: ArrayLike<number>, offset?: number): this;
     identity(): this;
     copy(m: Matrix4): this;
@@ -163,6 +166,9 @@ declare module 'three/tsl' {
   export function uniform(value: Vector2): TslUniform<Vector2>;
   export function uniform(value: Vector3): TslUniform<Vector3>;
   export function uniform(value: Color): TslUniform<Color>;
+  export function uniform(
+    value: import('three/webgpu').Matrix4,
+  ): TslUniform<import('three/webgpu').Matrix4>;
   export function uniform(value: number): TslUniform<number>;
   export function hash(seed: TslNode): TslNode;
   export function If(condition: TslNode, thenFn: () => void): void;

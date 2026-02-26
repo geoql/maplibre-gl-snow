@@ -97,18 +97,17 @@ class SnowGPU {
   private uCenter = uniform(new THREE.Vector2(0.5, 0.5));
   private uHalfSpan = uniform(0.005);
   private uAltSpan = uniform(0.0025);
-  private uRadius = uniform(1e-6);
+  private uRadiusPx = uniform(4.0);
   private uFallSpeed = uniform(0.0);
   private uWindX = uniform(0.0);
   private uWindY = uniform(0.0);
   private uOpacity = uniform(0.8);
   private uColor = uniform(new THREE.Color(1, 1, 1));
 
-  // Billboard camera axes — updated every frame from MapLibre bearing/pitch.
-  // Since cameraViewMatrix is identity (MapLibre drives projection directly),
-  // we compute screen-aligned axes from bearing/pitch and pass as uniforms.
-  private uCamRight = uniform(new THREE.Vector3(1, 0, 0));
-  private uCamUp = uniform(new THREE.Vector3(0, 0, 1));
+  // Screen-space billboard uniforms — updated every frame.
+  private uMainMatrix = uniform(new THREE.Matrix4());
+  private uViewportW = uniform(1.0);
+  private uViewportH = uniform(1.0);
 
   // Fog overlay
   private fogMesh: THREE.Mesh | null = null;
@@ -136,14 +135,13 @@ class SnowGPU {
 
       this.scene = new THREE.Scene();
 
-      // PerspectiveCamera — projection matrix is driven by MapLibre, not Three.js internals.
-      // Override updateProjectionMatrix to no-op so the renderer does not
-      // clobber our manually-set projection matrix from MapLibre's mercator projection.
+      // PerspectiveCamera with identity projection override — positionNode emits clip-space
+      // coords directly (no camera transform applied on top).
       this.camera = new THREE.PerspectiveCamera(60, 1, 0.001, 1000);
       this.camera.matrixAutoUpdate = false;
       this.camera.matrixWorld.identity();
       this.camera.matrixWorldInverse.identity();
-      // Prevent Three.js renderer from overwriting our projection matrix
+      // Prevent Three.js from overwriting our projection matrix
       this.camera.updateProjectionMatrix = () => {};
 
       this._buildParticleSystem();
@@ -252,25 +250,38 @@ class SnowGPU {
     // DoubleSide (=2) not typed in three/webgpu; set at runtime so the plane
     // renders regardless of winding order after MapLibre's projection transform.
     Object.assign(material, { side: 2 });
-    const uRadius = this.uRadius;
+    const uRadiusPx = this.uRadiusPx;
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
-    const uCamRight = this.uCamRight;
-    const uCamUp = this.uCamUp;
+    const uMainMatrix = this.uMainMatrix;
+    const uViewportW = this.uViewportW;
+    const uViewportH = this.uViewportH;
 
-    // Billboard positionNode:
-    // PlaneGeometry local XY goes [-1,1]. We project the local offset onto the
-    // camera-aligned right/up axes (in mercator world space) so the quad always
-    // faces the screen regardless of bearing and pitch.
-    // Use TSL dot() to extract X and Y components of positionLocal.
-    // dot(positionLocal, vec3(1,0,0)) equals positionLocal.x (no untyped swizzle needed).
+    // Screen-space billboard positionNode:
+    // 1. Build a vec4 center in mercator world space (w=1).
+    // 2. Project it to clip space using MapLibre's main matrix.
+    // 3. Convert to NDC, add pixel-aligned offsets, output as positionNode.
+    // This is immune to mercator Z-scale distortion that broke the world-space billboard.
+    const particlePos = posBuffer.element(instanceIndex);
+    const center4 = vec4(
+      particlePos.x,
+      particlePos.y,
+      particlePos.z,
+      float(1.0),
+    );
+    const clipCenter = uMainMatrix.mul(center4);
+    const w = clipCenter.w;
+    // localX/localY are in [-1, 1] (PlaneGeometry). Convert radius from CSS pixels to NDC.
     const localX = dot(positionLocal, vec3(1, 0, 0));
     const localY = dot(positionLocal, vec3(0, 1, 0));
-    material.positionNode = uCamRight
-      .mul(localX)
-      .mul(uRadius)
-      .add(uCamUp.mul(localY).mul(uRadius))
-      .add(posBuffer.element(instanceIndex));
+    const rNDC_x = uRadiusPx.mul(float(2.0)).div(uViewportW);
+    const rNDC_y = uRadiusPx.mul(float(2.0)).div(uViewportH);
+    const ndcX = clipCenter.x.div(w).add(localX.mul(rNDC_x));
+    const ndcY = clipCenter.y.div(w).add(localY.mul(rNDC_y));
+    const ndcZ = clipCenter.z.div(w);
+    // positionNode is treated as clip-space by the identity camera.
+    // Three.js appends w=1 giving gl_Position = vec4(ndcX, ndcY, ndcZ, 1) — correct.
+    material.positionNode = vec3(ndcX, ndcY, ndcZ);
 
     // 3D sphere shading: crisp circular disc + Lambertian diffuse.
     // dist = 0 at UV centre, 0.5 at the disc edge (PlaneGeometry UV is [0,1]).
@@ -323,15 +334,19 @@ class SnowGPU {
   // Called by MaplibreSnowLayer.render() every frame
   // -------------------------------------------------------------------------
 
-  frame(projMatrix: Float32Array): void {
+  frame(projMatrix: Float32Array, cssWidth: number, cssHeight: number): void {
     if (!this.renderer || !this.scene || !this.camera || !this.initialized)
       return;
 
-    // Apply MapLibre's mercator projection matrix directly
-    this.camera.projectionMatrix.fromArray(projMatrix);
-    this.camera.projectionMatrixInverse
-      .copy(this.camera.projectionMatrix)
-      .invert();
+    // Screen-space billboard: identity camera, matrix passed as uniform.
+    // Three.js MVP = identity × identity = identity, so positionNode IS clip-space.
+    this.camera.projectionMatrix.identity();
+    this.camera.projectionMatrixInverse.identity();
+
+    // Update screen-space billboard uniforms
+    this.uMainMatrix.value.fromArray(projMatrix);
+    this.uViewportW.value = cssWidth;
+    this.uViewportH.value = cssHeight;
 
     // Run compute
     if (this.computeUpdate) {
@@ -372,9 +387,8 @@ class SnowGPU {
     // (radius doesn't change per-frame unless user changes it)
   }
 
-  updateFlakeRadius(flakeSizePx: number, zoom: number, dpr: number): void {
-    const pxToMerc = 1 / (512 * Math.pow(2, zoom));
-    this.uRadius.value = flakeSizePx * pxToMerc * dpr * 0.5;
+  updateFlakeRadiusPx(flakeSizePx: number): void {
+    this.uRadiusPx.value = flakeSizePx;
   }
 
   updateWind(
@@ -395,28 +409,6 @@ class SnowGPU {
     const pxToMerc = 1 / (512 * Math.pow(2, zoom));
     // base fall = 40 px/s * intensity, converted to merc/frame
     this.uFallSpeed.value = (40 * intensity * pxToMerc) / fps;
-  }
-
-  updateBillboard(bearing: number, pitch: number): void {
-    // Compute screen-aligned camera axes from MapLibre bearing and pitch.
-    // bearing: clockwise degrees from north; pitch: degrees from overhead (0=top-down).
-    //
-    // right_world = camera's screen-right axis in mercator XYZ space:
-    //   (cos(B), sin(B), 0)  — horizontal, perpendicular to the look direction
-    //
-    // up_world = camera's screen-up axis in mercator XYZ space:
-    //   (sin(B)*cos(P), -cos(B)*cos(P), sin(P))
-    //   Verification:
-    //     B=0, P=0  (overhead north): right=(1,0,0)=east ✓, up=(0,-1,0)=north ✓
-    //     B=0, P=90 (horizontal north): up=(0,0,1)=altitude ✓
-    const bearingRad = (bearing * Math.PI) / 180;
-    const pitchRad = (pitch * Math.PI) / 180;
-    const cosB = Math.cos(bearingRad);
-    const sinB = Math.sin(bearingRad);
-    const cosP = Math.cos(pitchRad);
-    const sinP = Math.sin(pitchRad);
-    this.uCamRight.value.set(cosB, sinB, 0);
-    this.uCamUp.value.set(sinB * cosP, -cosB * cosP, sinP);
   }
 
   // -------------------------------------------------------------------------
@@ -607,12 +599,16 @@ class MaplibreSnowLayer {
     const cssW = this.map.getContainer().clientWidth;
     const merc = lngLatToMercator(center.lng, center.lat);
     this.gpu.updateSpatial(merc.x, merc.y, zoom, cssW);
-    this.gpu.updateFlakeRadius(this._flakeSize, zoom, window.devicePixelRatio);
+    this.gpu.updateFlakeRadiusPx(this._flakeSize);
     this.gpu.updateWind(this._direction[0], this._direction[1], zoom, fps);
     this.gpu.updateFallSpeed(this._intensity, zoom, fps);
-    this.gpu.updateBillboard(this.map.getBearing(), this.map.getPitch());
     this.gpu.runInit();
-    this.gpu.frame(new Float32Array(args.defaultProjectionData.mainMatrix));
+    const cssH = this.map.getContainer().clientHeight;
+    this.gpu.frame(
+      new Float32Array(args.defaultProjectionData.mainMatrix),
+      cssW,
+      cssH,
+    );
     this.map.triggerRepaint();
   }
 
@@ -648,6 +644,7 @@ class MaplibreSnowLayer {
 
   setFlakeSize(size: number): void {
     this._flakeSize = size;
+    this.gpu?.updateFlakeRadiusPx(size);
   }
 
   setOpacity(opacity: number): void {
