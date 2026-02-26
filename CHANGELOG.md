@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.7](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.6...v0.0.7) (2026-02-26)
+
+
+### Features
+
+* billboard snowflakes — screen-aligned quads via camera right/up uniforms ([f3b2243](https://github.com/geoql/maplibre-gl-snow/commit/f3b224377d5acbeeb116784905277e27048868ee))
+
+
+### Bug Fixes
+
+* add DoubleSide + uv()-based SDF for correct PlaneGeometry rendering ([1475a03](https://github.com/geoql/maplibre-gl-snow/commit/1475a03056ef9fe6ebe0b6587f5f27c67b94cc5a))
+* use PlaneGeometry + circle SDF to eliminate altitude-stretch artefacts ([5228a5b](https://github.com/geoql/maplibre-gl-snow/commit/5228a5b68f28d47490b2f9a1c4dbd8dbd5f63bb2))
+
 ## [0.0.6](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.5...v0.0.6) (2026-02-26)
 
 
