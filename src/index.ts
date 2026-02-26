@@ -227,10 +227,11 @@ class SnowGPU {
     this.computeUpdate = updateFn().compute(N);
 
     // ----- Snow flake mesh -----
-    // High-poly sphere for smooth circles at any zoom/pitch.
-    // 32x32 segments = 1024 triangles per sphere (vs 288 with 12x12).
-    // Provides true 3D depth with perspective.
-    const geometry = new THREE.SphereGeometry(1, 32, 32);
+    // SphereGeometry(1, 64, 32): smooth spherical snowflakes with 3D depth.
+    // Using posBuffer.element(instanceIndex) instead of toAttribute() so that
+    // the entire sphere instance reads ONE particle position (per-instance),
+    // not a different position per vertex (which caused scattered triangle/square artefacts).
+    const geometry = new THREE.SphereGeometry(1, 64, 32);
 
     const material = new THREE.MeshBasicNodeMaterial({
       transparent: true,
@@ -242,10 +243,10 @@ class SnowGPU {
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
 
-    // Scale unit sphere by radius, offset by particle mercator position
+    // Scale sphere by radius, offset by particle position (per-instance read)
     material.positionNode = positionLocal
       .mul(uRadius)
-      .add(posBuffer.toAttribute());
+      .add(posBuffer.element(instanceIndex));
 
     material.colorNode = vec4(uColor, uOpacity);
 
