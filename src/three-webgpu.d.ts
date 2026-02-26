@@ -139,17 +139,23 @@ declare module 'three/webgpu' {
 }
 
 declare module 'three/tsl' {
-  import type { Vector2, Color } from 'three/webgpu';
+  import type { Vector2, Vector3, Color } from 'three/webgpu';
 
   export function Fn(fn: () => void): TslFnCallable;
   export function float(value: number): TslNode;
   export function uint(value: number): TslNode;
+  export function vec3(
+    x: TslNode | number,
+    y?: TslNode | number,
+    z?: TslNode | number,
+  ): TslNode;
   export function vec4(
     x: TslNode | Color,
     y?: TslNode | number,
     z?: TslNode | number,
     w?: TslNode | number,
   ): TslNode;
+  export function dot(a: TslNode, b: TslNode): TslNode;
   export const instanceIndex: TslNode;
   export const positionLocal: TslNode;
   export const instanceUV: TslNode;

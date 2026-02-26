@@ -13,9 +13,11 @@
 import * as THREE from 'three/webgpu';
 import {
   Fn,
+  vec3,
   vec4,
   float,
   uint,
+  dot,
   instanceIndex,
   instancedArray,
   positionLocal,
@@ -101,6 +103,12 @@ class SnowGPU {
   private uWindY = uniform(0.0);
   private uOpacity = uniform(0.8);
   private uColor = uniform(new THREE.Color(1, 1, 1));
+
+  // Billboard camera axes — updated every frame from MapLibre bearing/pitch.
+  // Since cameraViewMatrix is identity (MapLibre drives projection directly),
+  // we compute screen-aligned axes from bearing/pitch and pass as uniforms.
+  private uCamRight = uniform(new THREE.Vector3(1, 0, 0));
+  private uCamUp = uniform(new THREE.Vector3(0, 0, 1));
 
   // Fog overlay
   private fogMesh: THREE.Mesh | null = null;
@@ -247,10 +255,21 @@ class SnowGPU {
     const uRadius = this.uRadius;
     const uColor = this.uColor;
     const uOpacity = this.uOpacity;
+    const uCamRight = this.uCamRight;
+    const uCamUp = this.uCamUp;
 
-    // Scale disc by radius, offset to particle position (per-instance read)
-    material.positionNode = positionLocal
+    // Billboard positionNode:
+    // PlaneGeometry local XY goes [-1,1]. We project the local offset onto the
+    // camera-aligned right/up axes (in mercator world space) so the quad always
+    // faces the screen regardless of bearing and pitch.
+    // Use TSL dot() to extract X and Y components of positionLocal.
+    // dot(positionLocal, vec3(1,0,0)) equals positionLocal.x (no untyped swizzle needed).
+    const localX = dot(positionLocal, vec3(1, 0, 0));
+    const localY = dot(positionLocal, vec3(0, 1, 0));
+    material.positionNode = uCamRight
+      .mul(localX)
       .mul(uRadius)
+      .add(uCamUp.mul(localY).mul(uRadius))
       .add(posBuffer.element(instanceIndex));
 
     // Circle SDF via UV: mirrors the proven screenUV.distance() pattern from fog.
@@ -373,6 +392,28 @@ class SnowGPU {
     const pxToMerc = 1 / (512 * Math.pow(2, zoom));
     // base fall = 40 px/s * intensity, converted to merc/frame
     this.uFallSpeed.value = (40 * intensity * pxToMerc) / fps;
+  }
+
+  updateBillboard(bearing: number, pitch: number): void {
+    // Compute screen-aligned camera axes from MapLibre bearing and pitch.
+    // bearing: clockwise degrees from north; pitch: degrees from overhead (0=top-down).
+    //
+    // right_world = camera's screen-right axis in mercator XYZ space:
+    //   (cos(B), sin(B), 0)  — horizontal, perpendicular to the look direction
+    //
+    // up_world = camera's screen-up axis in mercator XYZ space:
+    //   (sin(B)*cos(P), -cos(B)*cos(P), sin(P))
+    //   Verification:
+    //     B=0, P=0  (overhead north): right=(1,0,0)=east ✓, up=(0,-1,0)=north ✓
+    //     B=0, P=90 (horizontal north): up=(0,0,1)=altitude ✓
+    const bearingRad = (bearing * Math.PI) / 180;
+    const pitchRad = (pitch * Math.PI) / 180;
+    const cosB = Math.cos(bearingRad);
+    const sinB = Math.sin(bearingRad);
+    const cosP = Math.cos(pitchRad);
+    const sinP = Math.sin(pitchRad);
+    this.uCamRight.value.set(cosB, sinB, 0);
+    this.uCamUp.value.set(sinB * cosP, -cosB * cosP, sinP);
   }
 
   // -------------------------------------------------------------------------
@@ -566,6 +607,7 @@ class MaplibreSnowLayer {
     this.gpu.updateFlakeRadius(this._flakeSize, zoom, window.devicePixelRatio);
     this.gpu.updateWind(this._direction[0], this._direction[1], zoom, fps);
     this.gpu.updateFallSpeed(this._intensity, zoom, fps);
+    this.gpu.updateBillboard(this.map.getBearing(), this.map.getPitch());
     this.gpu.runInit();
     this.gpu.frame(new Float32Array(args.defaultProjectionData.mainMatrix));
     this.map.triggerRepaint();
