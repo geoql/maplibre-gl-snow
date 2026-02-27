@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.8](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.7...v0.0.8) (2026-02-27)
+
+
+### Bug Fixes
+
+* 3D sphere snow — crisp disc mask, Lambertian diffuse, sane spawn area and density ([417ae42](https://github.com/geoql/maplibre-gl-snow/commit/417ae42b19ba3319f9d46294b6c1383740bbf08d))
+* **snow:** screen-space billboard \u2014 replace world-space axes with MapLibre matrix projection ([82801dd](https://github.com/geoql/maplibre-gl-snow/commit/82801dd1715a6a1493e650cf297d2537b353e4cc))
+
 ## [0.0.7](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.6...v0.0.7) (2026-02-26)
 
 
