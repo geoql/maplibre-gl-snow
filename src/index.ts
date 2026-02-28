@@ -58,9 +58,9 @@ export interface MaplibreSnowOptions {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_PARTICLE_COUNT = 100_000;
-const MIN_PARTICLE_COUNT = 10_000;
-const MAX_PARTICLE_COUNT = 200_000;
+const DEFAULT_PARTICLE_COUNT = 8_000;
+const MIN_PARTICLE_COUNT = 2_000;
+const MAX_PARTICLE_COUNT = 20_000;
 
 // ---------------------------------------------------------------------------
 // Mercator helpers (no maplibre-gl import needed)
