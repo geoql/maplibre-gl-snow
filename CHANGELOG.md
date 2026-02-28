@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.9](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.8...v0.0.9) (2026-02-28)
+
+
+### Bug Fixes
+
+* reduce default particle counts — MIN 2k, DEFAULT 8k, MAX 20k ([762e4d2](https://github.com/geoql/maplibre-gl-snow/commit/762e4d259529ff2a4db79e354b49d3369a3373ff))
+
 ## [0.0.8](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.7...v0.0.8) (2026-02-27)
 
 
