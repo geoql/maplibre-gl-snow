@@ -62,10 +62,10 @@
     "is-ci": "^4.1.0",
     "lint-staged": "^16.2.7",
     "maplibre-gl": "^5.19.0",
-    "oxfmt": "^0.35.0",
+    "oxfmt": "^0.46.0",
     "oxlint": "^1.50.0",
-    "three": "^0.183.1",
-    "tsdown": "^0.20.3",
+    "three": "^0.184.0",
+    "tsdown": "^0.21.9",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
