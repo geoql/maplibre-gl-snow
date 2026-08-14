@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { MaplibreSnowLayer } from '@geoql/maplibre-gl-snow';
 import './style.css';
 
