@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.10](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.9...v0.0.10) (2026-08-15)
+
+
+### Bug Fixes
+
+* **example:** use namespace import for maplibre-gl v6 ([a87595d](https://github.com/geoql/maplibre-gl-snow/commit/a87595dd505a8bedcedf389eac8c45906af4c782))
+
+
+### Miscellaneous
+
+* update commit-msg husky hook ([a772595](https://github.com/geoql/maplibre-gl-snow/commit/a772595c8b0dd58b0c0b0388230c03d245ce9be0))
+
 ## [0.0.9](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.8...v0.0.9) (2026-02-28)
 
 
