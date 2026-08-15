@@ -16,7 +16,7 @@
     "noImplicitReturns": true,
     "skipLibCheck": true,
     "paths": {
-      "@geoql/maplibre-gl-snow": ["../dist"]
+      "@geoql/maplibre-gl-snow": ["../src/index.ts"]
     }
   },
   "include": ["src"]

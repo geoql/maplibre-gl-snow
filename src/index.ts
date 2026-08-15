@@ -571,7 +571,7 @@ class MaplibreSnowLayer {
 
     // Init WebGPU async
     this.gpu = new SnowGPU();
-    this.gpu.init(this.overlayCanvas).then((ok) => {
+    void this.gpu.init(this.overlayCanvas).then((ok) => {
       if (!ok) return;
       // Apply initial options after init
       this.gpu!.setDensity(this._density);
