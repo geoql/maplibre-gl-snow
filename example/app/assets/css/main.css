@@ -154,9 +154,9 @@ body {
 }
 
 /* MapLibre chrome on the token set. */
-.maplibregl-ctrl-group,
-.maplibregl-ctrl-attrib {
-  border-radius: 0 !important;
+.maplibregl-map .maplibregl-ctrl-group,
+.maplibregl-map .maplibregl-ctrl-attrib {
+  border-radius: 0;
 }
 
 :root.dark .maplibregl-ctrl-group {
@@ -186,13 +186,15 @@ body {
 }
 
 /* Phone: the bottom sheet covers the bottom edge; keep the attribution
- * above it and drop the zoom buttons (pinch and two-finger drag cover it). */
+ * above it and drop the zoom buttons (pinch and two-finger drag cover it).
+ * Scoped under .maplibregl-map so it wins over maplibre-gl.css, which loads
+ * in its own chunk. */
 @media (max-width: 639.98px) {
-  .maplibregl-ctrl-bottom-right {
+  .maplibregl-map .maplibregl-ctrl-bottom-right {
     bottom: 4.75rem;
   }
 
-  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
+  .maplibregl-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
     display: none;
   }
 }
