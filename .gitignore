@@ -134,3 +134,9 @@ dist
 
 .sisyphus
 tmp
+
+# Nuxt / Cloudflare (example/)
+.nuxt
+.output
+.wrangler
+.data

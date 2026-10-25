@@ -11,9 +11,9 @@ WebGPU-accelerated snow particle layer for [MapLibre GL JS](https://maplibre.org
 [![typescript](https://img.shields.io/npm/dependency-version/@geoql/maplibre-gl-snow/dev/typescript?logo=TypeScript)](https://www.typescriptlang.org/)
 [![WebGPU](https://img.shields.io/badge/WebGPU-Yes-brightgreen)](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API)
 
-> [**Live Demo**](https://geoql.github.io/maplibre-gl-snow/)
+> [**Live Demo**](https://maplibre-gl-snow.geoql.in)
 
-Renders 100,000+ animated snow particles using Three.js WebGPU renderer with TSL compute shaders. Particles are georeferenced in Mercator coordinates — snow always fills the viewport regardless of zoom level. Supports wind direction, intensity, fog overlay, and more.
+Renders up to 20,000 animated snow particles using Three.js WebGPU renderer with TSL compute shaders. Particles are georeferenced in Mercator coordinates — snow always fills the viewport regardless of zoom level. Supports wind direction, intensity, fog overlay, and more.
 
 ## Installation
 
@@ -26,9 +26,6 @@ pnpm add @geoql/maplibre-gl-snow maplibre-gl three
 
 # yarn
 yarn add @geoql/maplibre-gl-snow maplibre-gl three
-
-# bun
-bun add @geoql/maplibre-gl-snow maplibre-gl three
 ```
 
 ## Usage
@@ -80,7 +77,7 @@ interface MaplibreSnowOptions {
 | Option       | Type               | Default   | Description                                        |
 | ------------ | ------------------ | --------- | -------------------------------------------------- |
 | `id`         | `string`           | `'snow'`  | Unique layer ID                                    |
-| `density`    | `number` (0–1)     | `0.5`     | Particle density — maps to 10k–200k particles      |
+| `density`    | `number` (0–1)     | `0.5`     | Particle density — maps to 2k–20k particles        |
 | `intensity`  | `number` (0–1)     | `0.5`     | Fall speed multiplier                              |
 | `flakeSize`  | `number`           | `4`       | Base flake size in CSS pixels                      |
 | `opacity`    | `number` (0–1)     | `0.8`     | Global opacity multiplier                          |
@@ -108,7 +105,7 @@ snow.setFogOpacity(0.12);
 The layer implements MapLibre's `CustomLayerInterface` with a two-canvas architecture:
 
 1. **WebGPU overlay** — Three.js `WebGPURenderer` on a separate `<canvas>` positioned absolutely over the MapLibre canvas. `pointer-events: none` ensures clicks pass through to the map.
-2. **TSL compute shaders** — 100k particles stored in GPU `instancedArray` buffers. Compute shaders handle:
+2. **TSL compute shaders** — 2k–20k particles stored in GPU `instancedArray` buffers. Compute shaders handle:
    - `computeInit` — spawns particles in a zoom-adaptive volume centered on the viewport
    - `computeUpdate` — applies gravity, wind drift, and respawns particles that fall below ground
 3. **Georeferenced particles** — positions stored as `(mercX, mercY, mercAlt)` in Mercator [0,1] space. Spawn volume adapts to zoom level so snow always fills the viewport.
@@ -138,7 +135,6 @@ export type { MaplibreSnowOptions } from '@geoql/maplibre-gl-snow';
 
 - MapLibre GL JS >= 3.0.0
 - Three.js >= 0.183.0 (WebGPU-enabled build)
-- Node.js >= 24.0.0
 
 ## Contributing
 
@@ -147,11 +143,24 @@ export type { MaplibreSnowOptions } from '@geoql/maplibre-gl-snow';
 3. Ensure commits are signed ([why?](https://withblue.ink/2020/05/17/how-and-why-to-sign-git-commits.html))
 4. Submit a PR
 
+Development needs Node.js 26+ and pnpm (the version is pinned in `package.json`).
+
 ```bash
-bun install
-bun run build
-bun run lint
-bun run typecheck
+pnpm install
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run build
+```
+
+The demo in `example/` is a Nuxt app on a Cloudflare Worker
+(`maplibre-gl-snow-demo`, served at https://maplibre-gl-snow.geoql.in). It runs
+the layer straight from `src/`.
+
+```bash
+pnpm run demo:dev     # local dev server
+pnpm run demo:build   # production build
+pnpm run deploy       # build and deploy the Worker (wrangler login required)
 ```
 
 ## License

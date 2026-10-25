@@ -11,9 +11,21 @@ export default defineConfig({
       neverBundle: ['maplibre-gl', 'three'],
     },
   },
+  test: {
+    environment: 'node',
+    include: ['example/tests/**/*.test.ts'],
+  },
   lint: {
     plugins: ['typescript', 'import'],
-    ignorePatterns: ['dist', 'node_modules', 'coverage', '*.config.ts'],
+    ignorePatterns: [
+      'dist',
+      'node_modules',
+      'coverage',
+      '*.config.ts',
+      '**/.nuxt',
+      '**/.output',
+      '**/.wrangler',
+    ],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -49,6 +61,9 @@ export default defineConfig({
       '*.lock',
       'CHANGELOG.md',
       'jsr.json',
+      '**/.nuxt',
+      '**/.output',
+      '**/.wrangler',
     ],
   },
 });
