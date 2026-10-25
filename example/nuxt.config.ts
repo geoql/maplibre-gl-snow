@@ -63,7 +63,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       siteUrl: `https://${HOST}`,
-      gtagId: '',
+      gtagId: 'G-K8J9RWX2PG',
       plausibleScriptId: 'mf5DVqCKBrqcoVBKKHp_N',
       plausibleApiHost: 'https://analytics.geoql.in',
     },
