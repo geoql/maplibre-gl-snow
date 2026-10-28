@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.11](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.10...v0.0.11) (2026-10-25)
+
+
+### Features
+
+* **demo:** enable ga4 ([#20](https://github.com/geoql/maplibre-gl-snow/issues/20)) ([4467c9f](https://github.com/geoql/maplibre-gl-snow/commit/4467c9f779aed8e0f029a7fc298046cae252223e))
+
+
+### Miscellaneous
+
+* move the demo to cloudflare workers, pnpm and latest deps ([#18](https://github.com/geoql/maplibre-gl-snow/issues/18)) ([5007ff8](https://github.com/geoql/maplibre-gl-snow/commit/5007ff866f18b82bbb760ca4c0372fd8554365a2))
+
 ## [0.0.10](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.9...v0.0.10) (2026-08-15)
 
 
