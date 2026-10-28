@@ -11,7 +11,7 @@ WebGPU-accelerated snow particle layer for [MapLibre GL JS](https://maplibre.org
 [![typescript](https://img.shields.io/npm/dependency-version/@geoql/maplibre-gl-snow/dev/typescript?logo=TypeScript)](https://www.typescriptlang.org/)
 [![WebGPU](https://img.shields.io/badge/WebGPU-Yes-brightgreen)](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API)
 
-> [**Live Demo**](https://maplibre-gl-snow.geoql.in)
+**[Live demo](https://maplibre-gl-snow.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow)** · [npm](https://www.npmjs.com/package/@geoql/maplibre-gl-snow) · [JSR](https://jsr.io/@geoql/maplibre-gl-snow)
 
 Renders up to 20,000 animated snow particles using Three.js WebGPU renderer with TSL compute shaders. Particles are georeferenced in Mercator coordinates — snow always fills the viewport regardless of zoom level. Supports wind direction, intensity, fog overlay, and more.
 
@@ -162,6 +162,17 @@ pnpm run demo:dev     # local dev server
 pnpm run demo:build   # production build
 pnpm run deploy       # build and deploy the Worker (wrangler login required)
 ```
+
+## More from the author
+
+- [maplibre-gl-starfield](https://maplibre-gl-starfield.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — Three.js starfield skybox for globe maps
+- [maplibre-gl-wind](https://maplibre-gl-wind.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — wind particle animation layer
+- [maplibre-gl-interpolate-heatmap](https://maplibre-gl-interpolate-heatmap.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — IDW interpolated heatmap layer
+- [maplibre-gl-compare](https://maplibre-gl-compare.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — swipe-style map comparison control
+- [v-maplibre](https://v-maplibre.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — 50+ Vue 3 components for MapLibre GL
+- [mapcn-vue](https://mapcn-vue.geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) — shadcn-vue map components you copy into your app
+
+See every project at [vinayakkulkarni.dev/projects](https://vinayakkulkarni.dev/projects?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow) and [geoql.in](https://geoql.in/?utm_source=github&utm_medium=readme&utm_campaign=maplibre-gl-snow).
 
 ## License
 
