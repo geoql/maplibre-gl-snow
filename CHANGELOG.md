@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.12](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.11...v0.0.12) (2026-10-28)
+
+
+### Documentation
+
+* link live demo and related projects ([#21](https://github.com/geoql/maplibre-gl-snow/issues/21)) ([bdb44bf](https://github.com/geoql/maplibre-gl-snow/commit/bdb44bfd8bc13dbb6f302c58504c4df20bddf674))
+
 ## [0.0.11](https://github.com/geoql/maplibre-gl-snow/compare/v0.0.10...v0.0.11) (2026-10-25)
 
 
